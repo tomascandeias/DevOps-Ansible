@@ -1,0 +1,50 @@
+---
+- hosts: localhost
+  gather_facts: yes
+  become: yes
+  tasks:
+    - name: update Debian
+      ansible.builtin.apt:
+        update_cache: yes
+      when: ansible_os_family == 'Debian'
+
+    - name: update RedHat
+      ansible.builtin.yum:
+        update_cache: yes
+      when: ansible_os_family == 'RedHat'
+
+    - ansible.builtin.package:
+        name:
+          - wrk
+        state: present
+
+- hosts: master
+  tasks:
+    - name: remove whoami service
+      command: "docker service rm whoami{{item}}"
+      become: yes
+      ignore_errors: True
+      loop: [1, 2, 4, 8]
+
+    - name: create whoami service
+      command: "docker service create --name whoami{{item}} --publish published=808{{item}},target=80 --replicas {{item}} containous/whoami"
+      become: yes
+      loop: [1, 2, 4, 8]
+
+
+- hosts: localhost
+  gather_facts: yes
+  tasks:
+    - name: wrk 1
+      command: "wrk -t4 -c5 -d30s http://{{ hostvars | first }}:808{{item}}"
+      register: wrk_output
+      loop: [1, 2, 4, 8]
+      delay: 10
+      retries: 5
+      until: not wrk_output.failed
+
+    - name: work benchmark results
+      ansible.builtin.debug:
+        msg: '{{ item.stdout_lines | select("search", "Req/Sec") }}'
+      loop: "{{ wrk_output.results }}"
+

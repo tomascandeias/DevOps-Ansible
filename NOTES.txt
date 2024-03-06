@@ -1,0 +1,11 @@
+
+
+ansible cluster --inventory ansible_cluster_hosts -m setup
+or
+ansible master --inventory ansible_cluster_hosts -m setup
+ansible worker --inventory ansible_cluster_hosts -m setup
+
+
+ansible-playbook -i ansible_cluster_hosts configure-cluster.yml
+
+ansible-playbook -i ansible_cluster_hosts benchmark-cluster.yml
